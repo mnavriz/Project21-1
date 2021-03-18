@@ -11,7 +11,6 @@ public class ReusableMethods {
         return RandomStringUtils.randomAlphabetic(length);
     }
 
-
     public int randomInt(int length){
         return Integer.parseInt(RandomStringUtils.randomNumeric(length));
     }

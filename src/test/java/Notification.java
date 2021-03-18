@@ -1,7 +1,14 @@
+import PoJoModel.NotificationPoJo;
+import Utils.ReusableMethods;
 import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.builder.ResponseSpecBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.http.Cookies;
 import io.restassured.response.ValidatableResponse;
+import io.restassured.specification.RequestSpecification;
+import io.restassured.specification.ResponseSpecification;
+import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -9,18 +16,26 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.restassured.RestAssured.baseURI;
-import static io.restassured.RestAssured.given;
+import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 import static org.hamcrest.Matchers.containsString;
 
 public class Notification {
+    NotificationPoJo notificationPoJo = new NotificationPoJo();
+    ReusableMethods rm = new ReusableMethods();
+
     private Cookies cookies;
-    private ArrayList<String> idsForCleanUp = new ArrayList<>();;
+    private ArrayList<String> idsForCleanUp = new ArrayList<>();
+    private RequestSpecification requestSpecification;
+
     @BeforeClass
     public void setUp() {
 
-        RestAssured.baseURI = "https://test.campus.techno.study";
+        baseURI = "https://test.campus.techno.study";
+
+        requestSpecification = new RequestSpecBuilder()
+                .setContentType(ContentType.JSON)
+                .build();
 
         Map<String, String> credentials = new HashMap<>();
         credentials.put("username", "daulet2030@gmail.com");
@@ -50,46 +65,68 @@ description: ( description is up to you)
 type: ( "STUDENT_PAYMENT_TIME" )
 schoolId: (" 5c5aa8551ad17423a4f6ef1d ")
 */
+    public HashMap <String, String> initMap(){
+        HashMap<String, String> body = new HashMap<>();
+       // body.put("id", String.valueOf(rm.randomInt(2)));
+        body.put("name", rm.randomString(2)+rm.randomInt(3));
+        body.put("description", rm.randomString(5));
+        body.put("type", "STUDENT_PAYMENT_TIME");
+        body.put("schoolId", "5c5aa8551ad17423a4f6ef1d");
+
+        return body;
+    }
+    private ResponseSpecification responseSpecification(int statusCode) {
+        //ResponseSpecification responseSpecification;
+        return responseSpecification = new ResponseSpecBuilder()
+                .expectContentType(ContentType.JSON)
+                .expectStatusCode(statusCode)
+                .build();
+    }
 
     @Test
     public void CreateNotification(){
 
-        HashMap<String, String> notificationBody = new HashMap<>();
-        notificationBody.put("name","N1");
-        notificationBody.put("description","Notification1");
-        notificationBody.put("type","STUDENT_PAYMENT_TIME");
-        notificationBody.put("schoolId","5c5aa8551ad17423a4f6ef1d");
+        HashMap<String, String> body = initMap();
 
-        ValidatableResponse response = given()
+
+        given()
                 .cookies(cookies)
-                .body(notificationBody)
+                .body(body)
                 .contentType(ContentType.JSON)
                 .when()
                 .post("/school-service/api/notifications")
-                .then();
-
-        String id = response.statusCode(201).extract().jsonPath().getString("id");
-        idsForCleanUp.add(id);
+                .then()
+                .log().body()
+                .spec(responseSpecification(201))
+                .body(not(empty()))
+                .body("name",equalTo(body.get("name")))
+                .body("description",equalTo(body.get("description")))
+                .body("type",equalTo(body.get("type")))
+                .body("schoolId",equalTo(body.get("schoolId")));
+                //.extract().as(NotificationPoJo.class);
 
     }
+
+
 
     @Test(dependsOnMethods = "CreateNotification")
     public void DuplicateNotification(){
 
         HashMap<String, String> duplicateBody = new HashMap<>();
-        duplicateBody.put("name","N1");
-        duplicateBody.put("description","Notification1");
-        duplicateBody.put("type","STUDENT_PAYMENT_TIME");
-        duplicateBody.put("schoolId","5c5aa8551ad17423a4f6ef1d");
+        duplicateBody.put("name",notificationPoJo.getName());
+        duplicateBody.put("description",notificationPoJo.getDescription());
+        duplicateBody.put("type",notificationPoJo.getType());
+        duplicateBody.put("schoolId",notificationPoJo.getSchoolId());
 
         given()
                 .cookies(cookies)
+                .spec(requestSpecification)
                 .body(duplicateBody)
-                .contentType(ContentType.JSON)
                 .when()
                 .post("/school-service/api/notifications")
                 .then()
-                .statusCode(400)
+                .log().body()
+                .spec(responseSpecification(400))
                 .body("message", allOf(
                         containsString(duplicateBody.get("name")),
                         containsString("already exists")));
@@ -137,4 +174,5 @@ schoolId: (" 5c5aa8551ad17423a4f6ef1d ")
                 .statusCode(404);
         idsForCleanUp.remove(0);
     }
+
 }

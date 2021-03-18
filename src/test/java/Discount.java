@@ -92,8 +92,8 @@ active: (true)*/
                 .body(not(empty()))
                 .body("description", equalTo(body.get("description")))
                 .body("code", equalTo(body.get("code")))
-                .body("priority", equalTo(Integer.parseInt(body.get("priority"))))
-                .extract().as(DiscountPoJo.class);
+                .body("priority", equalTo(Integer.parseInt(body.get("priority"))));
+                //.extract().as(DiscountPoJo.class);
     }
 
     @Test (dependsOnMethods = "CreateDiscount")

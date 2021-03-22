@@ -1,4 +1,4 @@
-import PoJoModel.NotificationPoJo;
+import PoJoModel.Notification.NotificationPoJo;
 import Utils.ReusableMethods;
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
@@ -8,7 +8,6 @@ import io.restassured.http.Cookies;
 import io.restassured.response.ValidatableResponse;
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
-import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -20,37 +19,11 @@ import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 import static org.hamcrest.Matchers.containsString;
 
-public class Notification {
+public class Notification extends Hooks{
     NotificationPoJo notificationPoJo = new NotificationPoJo();
     ReusableMethods rm = new ReusableMethods();
 
-    private Cookies cookies;
-    private ArrayList<String> idsForCleanUp = new ArrayList<>();
-    private RequestSpecification requestSpecification;
 
-    @BeforeClass
-    public void setUp() {
-
-        baseURI = "https://test.campus.techno.study";
-
-        requestSpecification = new RequestSpecBuilder()
-                .setContentType(ContentType.JSON)
-                .build();
-
-        Map<String, String> credentials = new HashMap<>();
-        credentials.put("username", "daulet2030@gmail.com");
-        credentials.put("password", "TechnoStudy123@");
-        ValidatableResponse response = given()
-                .body(credentials)
-                .contentType(ContentType.JSON)
-                .when()
-                .post(baseURI.concat("/auth/login"))
-                .then();
-
-        response.statusCode(200);
-
-        cookies = response.extract().detailedCookies();
-    }
     /*--- PART 2 ---
 Create - Edit - Delete Notification
 Api Path: "/school-service/api/notifications"
@@ -76,7 +49,6 @@ schoolId: (" 5c5aa8551ad17423a4f6ef1d ")
         return body;
     }
     private ResponseSpecification responseSpecification(int statusCode) {
-        //ResponseSpecification responseSpecification;
         return responseSpecification = new ResponseSpecBuilder()
                 .expectContentType(ContentType.JSON)
                 .expectStatusCode(statusCode)
@@ -88,7 +60,6 @@ schoolId: (" 5c5aa8551ad17423a4f6ef1d ")
 
         HashMap<String, String> body = initMap();
 
-
         given()
                 .cookies(cookies)
                 .body(body)
@@ -97,82 +68,96 @@ schoolId: (" 5c5aa8551ad17423a4f6ef1d ")
                 .post("/school-service/api/notifications")
                 .then()
                 .log().body()
-                .spec(responseSpecification(201))
+                //.spec(responseSpecification(201))
+                .contentType(ContentType.JSON)
+                .statusCode(201)
                 .body(not(empty()))
                 .body("name",equalTo(body.get("name")))
                 .body("description",equalTo(body.get("description")))
                 .body("type",equalTo(body.get("type")))
-                .body("schoolId",equalTo(body.get("schoolId")));
-                //.extract().as(NotificationPoJo.class);
+                .body("schoolId",equalTo(body.get("schoolId")))
+                .extract().as(NotificationPoJo.class);
 
     }
-
 
 
     @Test(dependsOnMethods = "CreateNotification")
     public void DuplicateNotification(){
 
         HashMap<String, String> duplicateBody = new HashMap<>();
+
+        duplicateBody.put("id", null);
         duplicateBody.put("name",notificationPoJo.getName());
-        duplicateBody.put("description",notificationPoJo.getDescription());
+       // duplicateBody.put("description",notificationPoJo.getDescription());
         duplicateBody.put("type",notificationPoJo.getType());
         duplicateBody.put("schoolId",notificationPoJo.getSchoolId());
 
-        given()
+        System.out.println(duplicateBody);
+
+         given()
                 .cookies(cookies)
-                .spec(requestSpecification)
+                .contentType(ContentType.JSON)
                 .body(duplicateBody)
                 .when()
                 .post("/school-service/api/notifications")
                 .then()
-                .log().body()
-                .spec(responseSpecification(400))
+                .contentType(ContentType.JSON)
+                 .log().body()
+                 .statusCode(400)
                 .body("message", allOf(
                         containsString(duplicateBody.get("name")),
                         containsString("already exists")));
 
     }
 
-    @Test
+    @Test(dependsOnMethods = "CreateNotification")
     public void EditNotification(){
-        HashMap<String, String> editNotificationBody = new HashMap<>();
-        editNotificationBody.put("id",idsForCleanUp.get(0));
-        editNotificationBody.put("name", "editedN1");
+        HashMap<String, String> body = initMap();
+
+       body.put("id",notificationPoJo.getId());
+
 
         given()
                 .cookies (cookies)
-                .body(editNotificationBody)
                 .contentType(ContentType.JSON)
+                //.spec(requestSpecification)
+                .body(body)
                 .when()
                 .put("/school-service/api/notifications")
                 .then()
+                .log().body()
+                .contentType(ContentType.JSON)
                 .statusCode(200)
-                .body("name",equalTo(editNotificationBody.get("name")));
-
-
+                //.spec(responseSpecification(200))
+                .body("name",equalTo(body.get("name")));
 
     }
 
-    @Test
+    @Test(dependsOnMethods = "EditNotification")
     public void DeleteNotification(){
         given()
                 .cookies(cookies)
+                .spec(requestSpecification)
+                .pathParam("id",notificationPoJo.getId())
                 .when()
-                .delete("/school-service/api/notifications" +idsForCleanUp.get(0))
+                .delete("/school-service/api/notifications/{id}")
                 .then()
+                .log().body()
                 .statusCode(200);
-        idsForCleanUp.remove(0);
+
     }
 
-    @Test
+    @Test(dependsOnMethods = "DeleteNotification")
     public void DeleteNotificationAgain(){
         given()
                 .cookies(cookies)
+                .spec(requestSpecification)
+                .pathParam("id",notificationPoJo.getId())
                 .when()
-                .delete("/school-service/api/notifications" +idsForCleanUp.get(0))
+                .delete("/school-service/api/notifications/{id}")
                 .then()
+                .log().body()
                 .statusCode(404);
-        idsForCleanUp.remove(0);
     }
 
 }

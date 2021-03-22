@@ -1,40 +1,22 @@
-import io.restassured.RestAssured;
+import PoJoModel.Document.DocumentPoJo;
+import PoJoModel.Notification.NotificationPoJo;
+import Utils.ReusableMethods;
+import io.restassured.builder.ResponseSpecBuilder;
 import io.restassured.http.ContentType;
-import io.restassured.http.Cookies;
-import io.restassured.response.ValidatableResponse;
-import org.testng.annotations.BeforeClass;
+import io.restassured.specification.ResponseSpecification;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 
-import static io.restassured.RestAssured.baseURI;
-import static io.restassured.RestAssured.given;
+import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
-import static org.hamcrest.Matchers.containsString;
-public class Document {
-    private Cookies cookies;
-    private ArrayList<String> idsForCleanUp = new ArrayList<>();;
-    @BeforeClass
-    public void setUp() {
+import static org.hamcrest.Matchers.equalTo;
 
-        RestAssured.baseURI = "https://test.campus.techno.study";
+public class Document extends Hooks {
 
-        Map<String, String> credentials = new HashMap<>();
-        credentials.put("username", "daulet2030@gmail.com");
-        credentials.put("password", "TechnoStudy123@");
-        ValidatableResponse response = given()
-                .body(credentials)
-                .contentType(ContentType.JSON)
-                .when()
-                .post(baseURI.concat("/auth/login"))
-                .then();
+    DocumentPoJo documentPoJo = new DocumentPoJo();
+    ReusableMethods rm = new ReusableMethods();
 
-        response.statusCode(200);
-
-        cookies = response.extract().detailedCookies();
-    }
 
     /*  --- Part 3 ---
     Create - Edit - Delete Document Type
@@ -52,91 +34,84 @@ public class Document {
     required: ( true )
     attachmentStages: ( "EXAMINATION" , "EMPLOYMENT" , "CERTIFICATE" )
             */
-    @Test
-    public void CreateDocumentType(){
-        HashMap<String, String> documentBody = new HashMap<>();
-        documentBody.put("name","DT1");
-        documentBody.put("description","DocumentType1");
-        documentBody.put("schoolId","5c5aa8551ad17423a4f6ef1d");
-        documentBody.put("active", "true");
-        documentBody.put("required","true");
-        documentBody.put("attachmentStages", "\"EXAMINATION\" , \"EMPLOYMENT\" , \"CERTIFICATE\"");
+    public HashMap<String, String> initMap() {
+        HashMap<String, String> body = new HashMap<>();
+        body.put("id", null);
+        body.put("name", rm.randomString(4));
+        body.put("description", rm.randomString(5));
+        body.put("active", "true");
+        body.put("attachmentStages", "EXAMINATION");
 
-        ValidatableResponse response = given()
+        return body;
+    }
+
+    private ResponseSpecification responseSpecification(int statusCode) {
+        return responseSpecification = new ResponseSpecBuilder()
+                .expectContentType(ContentType.JSON)
+                .expectStatusCode(statusCode)
+                .build();
+    }
+
+
+    @Test
+    public void CreateDocumentType() {
+        HashMap<String, String> body = initMap();
+
+        given()
                 .cookies(cookies)
-                .body(documentBody)
                 .contentType(ContentType.JSON)
+                .body(body)
+                .log().body()
                 .when()
                 .post("/school-service/api/attachments")
+                .then()
+                .contentType(ContentType.JSON)
+                .log().body()
+                .statusCode(201)
+                .body(not(empty()))
+                .body("name",equalTo(body.get("name")))
+                .body("description",equalTo(body.get("description")))
+                .body("active",equalTo(body.get("active")))
+                .body("attachmentStages",equalTo(body.get("attachmentStages")))
+                .extract().as(DocumentPoJo.class);
+    }
+
+    @Test
+    public void DuplicateDocumentType() {
+        given()
+                .cookies(cookies)
+                .contentType(ContentType.JSON)
+                .when()
+                .then();
+    }
+
+    @Test
+    public void EditDocumentType() {
+        given()
+                .cookies(cookies)
+                .contentType(ContentType.JSON)
+                .when()
                 .then();
 
-        String id = response.statusCode(201).extract().jsonPath().getString("id");
-        idsForCleanUp.add(id);
     }
 
     @Test
-    public void DuplicateDocumentType(){
-
-        HashMap<String, String> duplicateDocumentBody = new HashMap<>();
-        duplicateDocumentBody.put("name","D1");
-        duplicateDocumentBody.put("description","Description1");
-        duplicateDocumentBody.put("schoolId","5c5aa8551ad17423a4f6ef1d");
-        duplicateDocumentBody.put("active", "true");
-        duplicateDocumentBody.put("required","true");
-        duplicateDocumentBody.put("attachmentStages", "\"EXAMINATION\" , \"EMPLOYMENT\" , \"CERTIFICATE\"");
-
-        ValidatableResponse response = given()
+    public void DeleteDocumentType() {
+        given()
                 .cookies(cookies)
-                .body(duplicateDocumentBody)
                 .contentType(ContentType.JSON)
                 .when()
-                .post("/school-service/api/attachments")
-                .then()
-                .body("message", allOf(
-                        containsString(duplicateDocumentBody.get("name")),
-                        containsString("already exists")));
+                .then();
     }
 
     @Test
-    public void EditDocumentType(){
-        HashMap<String,String> editDocumentBody = new HashMap<>();
-        editDocumentBody.put("id",idsForCleanUp.get(0));
-        editDocumentBody.put("name","editedDT1");
-        editDocumentBody.put("description","editedDocumentType1");
-
+    public void DeleteDocumentTypeAgain() {
         given()
-                .cookies (cookies)
-                .body(editDocumentBody)
+                .cookies(cookies)
                 .contentType(ContentType.JSON)
                 .when()
-                .put("/school-service/api/attachments")
-                .then()
-                .statusCode(200)
-                .body("name",equalTo(editDocumentBody.get("name")))
-                .body("description",equalTo(editDocumentBody.get("description")));
-
-
+                .then();
     }
 
-    @Test
-    public void DeleteDocumentType(){
-        given()
-                .cookies(cookies)
-                .when()
-                .delete("/school-service/api/attachments" +idsForCleanUp.get(0))
-                .then()
-                .statusCode(200);
-        idsForCleanUp.remove(0);
-    }
 
-    @Test
-    public void DeleteDocumentTypeAgain(){
-        given()
-                .cookies(cookies)
-                .when()
-                .delete("/school-service/api/attachments" +idsForCleanUp.get(0))
-                .then()
-                .statusCode(404);
-        idsForCleanUp.remove(0);
-    }
 }

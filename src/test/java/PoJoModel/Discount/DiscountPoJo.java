@@ -1,6 +1,5 @@
-package PoJoModel;
+package PoJoModel.Discount;
 
-import java.util.HashMap;
 import java.util.List;
 
 public class DiscountPoJo {

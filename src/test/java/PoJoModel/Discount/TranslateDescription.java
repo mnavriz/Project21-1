@@ -1,4 +1,4 @@
-package PoJoModel;
+package PoJoModel.Discount;
 
 public class TranslateDescription {
     private static String lang;

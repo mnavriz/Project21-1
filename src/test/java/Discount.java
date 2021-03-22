@@ -1,7 +1,6 @@
-import PoJoModel.DiscountPoJo;
-import PoJoModel.TranslateDescription;
+import PoJoModel.Discount.DiscountPoJo;
+import PoJoModel.Discount.TranslateDescription;
 import Utils.ReusableMethods;
-import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.builder.ResponseSpecBuilder;
 import io.restassured.http.ContentType;
@@ -22,45 +21,14 @@ import java.util.Map;
 import static io.restassured.RestAssured.baseURI;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
-import static org.hamcrest.Matchers.containsString;
 
 
-public class Discount {
+public class Discount extends Hooks{
     DiscountPoJo discountPoJo = new DiscountPoJo();
     TranslateDescription translateDescription = new TranslateDescription();
     ReusableMethods rm = new ReusableMethods();
 
-    private Cookies cookies;
-    private ArrayList<String> idsForCleanUp = new ArrayList<>();
-    private RequestSpecification requestSpecification;
-
-
-    @BeforeClass
-    public void setUp() {
-
-        baseURI = "https://test.campus.techno.study";
-
-        requestSpecification = new RequestSpecBuilder()
-                .setContentType(ContentType.JSON)
-                .build();
-
-        Map<String, String> credentials = new HashMap<>();
-        credentials.put("username", "daulet2030@gmail.com");
-        credentials.put("password", "TechnoStudy123@");
-        ValidatableResponse response = given()
-                .body(credentials)
-                .contentType(ContentType.JSON)
-                .when()
-                .post(baseURI.concat("/auth/login"))
-                .then();
-
-        response.statusCode(200);
-
-        cookies = response.extract().detailedCookies();
-    }
-
-
-        /*--- PART 1 ---
+    /*--- PART 1 ---
 Create - Edit - Delete Discount
 Api Path: "/school-service/api/discounts"
 Create Discount    --->   Status Code should be "201"
@@ -92,8 +60,8 @@ active: (true)*/
                 .body(not(empty()))
                 .body("description", equalTo(body.get("description")))
                 .body("code", equalTo(body.get("code")))
-                .body("priority", equalTo(Integer.parseInt(body.get("priority"))));
-                //.extract().as(DiscountPoJo.class);
+                .body("priority", equalTo(Integer.parseInt(body.get("priority"))))
+                .extract().as(DiscountPoJo.class);
     }
 
     @Test (dependsOnMethods = "CreateDiscount")
